@@ -1,3 +1,5 @@
+const mongoose = require("mongoose")
+
 const recordingSchema = new mongoose.Schema({
   interviewId: {
     type: mongoose.Schema.Types.ObjectId,

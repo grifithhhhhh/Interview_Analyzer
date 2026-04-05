@@ -1,3 +1,5 @@
+const mongoose = require("mongoose")
+
 const questionSchema = new mongoose.Schema({
   interviewId: {
     type: mongoose.Schema.Types.ObjectId,
