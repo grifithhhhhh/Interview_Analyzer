@@ -1,7 +1,12 @@
 const mongoose = require("mongoose")
 
 const userSchema = new mongoose.Schema({
-    name: {
+    firstName: {
+        type: String,
+        required: true
+    },
+
+    lastName: {
         type: String,
         required: true
     },
@@ -18,11 +23,14 @@ const userSchema = new mongoose.Schema({
         required: true,
         
     },
+    gender : {
+        type: String,
+    },
 
     role: {
         type: String,
-        enum: ["student", "admin"],
-        default: "student",
+        enum: ["user", "admin"],
+        default: "user",
     }
 
 },
