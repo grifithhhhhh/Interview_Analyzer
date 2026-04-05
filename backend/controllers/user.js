@@ -46,7 +46,7 @@ async function handleLogin(req,res) {
   if(role === "user"){
 
         const user = await User.findOne({ email });
-        if (!student) {
+        if (!user) {
         return res.status(404).json({ msg: "user not found" });
       }
       const isMatch = await bcrypt.compare(password, user.password);
@@ -56,15 +56,7 @@ async function handleLogin(req,res) {
       if (!isMatch) {
         return res.status(401).json({ msg: "Wrong password" });
       }
-        //create jwt 
-      const token = generateToken(student,role);
-      console.log(token)
-    // send this token to browser
-      res.cookie("token", token,{
-        httpOnly: true,
-        secure: false,   
-        sameSite: "lax",
-      });
+        
       const {password  : pwd, ...safeUser } = user.toObject()
       console.log("safeUser: ",safeUser)
       return res.status(200).json({user: safeUser})
@@ -72,7 +64,7 @@ async function handleLogin(req,res) {
   }
   
   if(role === "admin") {
-    const admin = await Admin.findOne({ email });
+    const admin = await User.findOne({ email });
   if (!admin) {
     return res.status(404).json({ msg: "Admin not found" });
   }
@@ -82,25 +74,12 @@ async function handleLogin(req,res) {
       if (!isMatch) {
         return res.status(401).json({ msg: "Wrong password" });
       }
-    //create jwt 
-   const token = generateToken(admin,role);
-
- // send this token to browser
-    res.cookie("token", token,{
-        httpOnly: true,
-        secure: false,   
-        sameSite: "lax",
-      });
-
-    const safeStudents = allStudent.map(student => {
-    const { password : pwd, ...s } = student.toObject();
-    return s;
-  }); 
+  
   const {password : pwd, ...safeAdmin } = admin.toObject()
-    return res.status(200).json({Data: {admin:safeAdmin,StudentData: safeStudents, courseData: allCourses , assignmentData : allAssignments}})
+    return res.status(200).json({user: safeAdmin})
   }
   
   }
 
-  module.exports = {handleNewUser,
+  module.exports = {handleNewUser,handleLogin,
   }
