@@ -1,4 +1,5 @@
 const User = require("../models/userSchema");
+const bcrypt = require("bcrypt");
 
 async function handleNewUser(req, res) {
     const body = req.body;
