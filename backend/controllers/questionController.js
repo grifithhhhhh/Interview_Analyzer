@@ -68,4 +68,14 @@ const generateQuestions = async (req, res) => {
   }
 }
 
-module.exports = { generateQuestions }
+const getQuestions = async (req, res) => {
+  try {
+    const candidate = await Candidate.findById(req.params.candidateId)
+    if (!candidate) return res.status(404).json({ error: 'Candidate not found' })
+    res.json({ questions: candidate.questions })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+}
+
+module.exports = { generateQuestions , getQuestions}

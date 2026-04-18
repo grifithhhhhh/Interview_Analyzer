@@ -55,8 +55,8 @@ const analyzeResume = async (req, res) => {
     const candidate = await Candidate.create({
       name: analysis.candidate_name,
       email: req.body.email || '',
-      jobRole: req.body.jobRole,
-      resumeText,
+       jobRole: analysis.recommended_roles?.[0] || 'Not specified', 
+       resumeText,
       resumeAnalysis: {
         overall_score: parseFloat(analysis.overall_score) || 0,
         experience_years: analysis.experience_years,

@@ -1,7 +1,8 @@
 require('dotenv').config()
 const express = require("express");
+const cors = require('cors');
 const app = express();
-const PORT = 6000;
+const PORT = process.env.PORT || 8000;
 const userRouter = require("./routes/user");
 const resumeRoutes = require('./routes/resume')
 const mongoose = require("mongoose")
@@ -11,6 +12,9 @@ const reportRoutes = require('./routes/report.js');
 
 
 //---------------middlewaresssss-----------------------
+app.use(cors({
+  origin: 'http://localhost:5173'
+}));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
