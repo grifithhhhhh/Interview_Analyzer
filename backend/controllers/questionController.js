@@ -5,68 +5,57 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
 const generateQuestions = async (req, res) => {
   try {
-    const { candidateId } = req.body
+    const { candidateId, jobRole } = req.body;
+    const candidate = await Candidate.findById(candidateId);
+    if (!candidate) return res.status(404).json({ error: 'Candidate not found' });
 
-    // Step 1: Find the candidate
-    const candidate = await Candidate.findById(candidateId)
-    if (!candidate) {
-      return res.status(404).json({ success: false, error: 'Candidate not found' })
+    // Update jobRole on candidate if provided
+    if (jobRole) {
+      candidate.jobRole = jobRole;
     }
 
-    // Step 2: Send to Groq
     const prompt = `
-      You are an expert technical interviewer.
-      Generate 8 interview questions for a ${candidate.jobRole} position.
-      
-      Based on this candidate's resume:
-      ${candidate.resumeText}
+You are an expert technical interviewer. Generate exactly 8 interview questions for a ${jobRole || candidate.jobRole} position.
 
-      Return ONLY a valid JSON object, no extra text, no markdown, no code fences.
-      Mix of: 4 technical, 2 behavioral, 2 situational questions.
+Candidate background:
+${candidate.resumeAnalysis.summary}
+Skills: ${candidate.resumeAnalysis.skills?.join(', ')}
 
-      Return exactly this structure:
-      {
-        "questions": [
-          {
-            "text": "question here",
-            "type": "technical" or "behavioral" or "situational",
-            "difficulty": "easy" or "medium" or "hard"
-          }
-        ]
-      }
-    `
+Question distribution — follow this exactly:
+- Questions 1, 2, 3: easy (warm-up, basic concepts, simple definitions)
+- Questions 4, 5, 6: medium (applied knowledge, problem solving, situational)
+- Questions 7, 8: hard (advanced concepts, architecture, complex scenarios)
+
+Scoring should be encouraging — reward effort and partial knowledge, not just perfect answers.
+
+Return ONLY a valid JSON array, no markdown:
+[
+  { "text": "question here", "type": "technical|behavioral", "difficulty": "easy|medium|hard" }
+]
+`;
 
     const response = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       temperature: 0.5,
       messages: [
-        {
-          role: 'system',
-          content: 'You are an expert technical interviewer. Return valid JSON only, no extra text, no markdown, no code fences.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
+        { role: 'system', content: 'Return valid JSON only, no markdown, no extra text.' },
+        { role: 'user', content: prompt }
       ]
-    })
+    });
 
-    // Step 3: Parse response
-    const raw = response.choices[0].message.content
-    const cleaned = raw.replace(/```json|```/g, '').trim()
-    const parsed = JSON.parse(cleaned)
+    const raw = response.choices[0].message.content;
+    const cleaned = raw.replace(/```json|```/g, '').trim();
+    const questions = JSON.parse(cleaned);
 
-    // Step 4: Save questions to candidate
-    candidate.questions = parsed.questions
-    await candidate.save()
+    candidate.questions = questions;
+    await candidate.save();
 
-    res.status(200).json({ success: true, questions: parsed.questions })
-
+    res.json({ success: true, questions });
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ success: false, error: err.message })
+    console.error(err);
+    res.status(500).json({ error: err.message });
   }
-}
+};
 
 const getQuestions = async (req, res) => {
   try {

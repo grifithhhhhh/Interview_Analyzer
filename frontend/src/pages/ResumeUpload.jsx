@@ -17,8 +17,8 @@ export default function ResumeUpload() {
     try {
       const { data } = await API.post('/resume/analyze', formData);
       const candidateId = data.candidate._id;
-      await API.post('/questions/generate', { candidateId });
-      navigate(`/interview/${candidateId}`);
+      const roles = data.candidate.resumeAnalysis.recommended_roles;
+      navigate(`/select-role/${candidateId}`, { state: { roles } });
     } catch (err) {
       alert('Upload failed: ' + err.message);
     } finally {
@@ -54,7 +54,7 @@ export default function ResumeUpload() {
         </button>
 
         {loading && (
-          <p className="text-gray-400 text-sm mt-4">This may take a few seconds...</p>
+          <p className="text-gray-400 text-sm mt-4">Analyzing your resume, please wait...</p>
         )}
       </div>
     </div>

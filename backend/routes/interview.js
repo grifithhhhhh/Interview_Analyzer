@@ -1,7 +1,8 @@
 const express = require('express');
 const multer = require('multer');
 const fs = require('fs');
-const { submitAnswer, getInterview } = require('../controllers/interviewController.js');
+const { submitAnswer, getInterview, flagInterview, voidInterview } = require('../controllers/interviewController.js');
+const authMiddleware = require('../middleware/authMiddleware.js');
 
 fs.mkdirSync('uploads/audio', { recursive: true });
 
@@ -13,7 +14,12 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-router.post('/answer', upload.single('audio'), submitAnswer);
-router.get('/:candidateId', getInterview);
+// specific routes first
+router.post('/answer', authMiddleware, upload.single('audio'), submitAnswer);
+router.post('/flag', authMiddleware, flagInterview);
+router.post('/void', authMiddleware, voidInterview);
+
+// dynamic route last
+router.get('/:candidateId', authMiddleware, getInterview);
 
 module.exports = router;

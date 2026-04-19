@@ -1,15 +1,26 @@
 const mongoose = require('mongoose')
 
 const answerSchema = new mongoose.Schema({
-  questionIndex: Number,        // which question (0, 1, 2...)
-  questionText: String,         // copy of the question text
-  transcript: String,           // whisper transcription of spoken answer
-  score: Number,                // GPT score 1-10
+  questionIndex: Number,
+  questionText: String,
+  transcript: String,
+  score: Number,
   verdict: {
     type: String,
     enum: ['good', 'average', 'weak']
   },
-  tip: String                   // one line GPT feedback
+  tip: String
+})
+
+const flagSchema = new mongoose.Schema({
+  type: {
+    type: String,
+    enum: ['tab_switch', 'window_blur', 'fullscreen_exit']
+  },
+  timestamp: {
+    type: Date,
+    default: Date.now
+  }
 })
 
 const interviewSchema = new mongoose.Schema({
@@ -22,8 +33,21 @@ const interviewSchema = new mongoose.Schema({
   overallScore: Number,
   status: {
     type: String,
-    enum: ['pending', 'in-progress', 'completed'],
+    enum: ['pending', 'in-progress', 'completed', 'voided'],
     default: 'pending'
+  },
+  flags: [flagSchema],
+  flagCount: {
+    type: Number,
+    default: 0
+  },
+  voided: {
+    type: Boolean,
+    default: false
+  },
+  voidReason: {
+    type: String,
+    default: null
   }
 }, { timestamps: true })
 

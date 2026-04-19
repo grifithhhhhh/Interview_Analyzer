@@ -122,4 +122,56 @@ const getInterview = async (req, res) => {
   }
 };
 
-module.exports = { submitAnswer, getInterview };
+const flagInterview = async (req, res) => {
+  try {
+    const { candidateId, type } = req.body;
+
+    let interview = await Interview.findOne({ candidate: candidateId });
+    if (!interview) {
+      interview = new Interview({
+        candidate: candidateId,
+        answers: [],
+        status: 'in-progress',
+        flagCount: 0,
+        flags: [],
+      });
+    }
+
+    interview.flags.push({ type, timestamp: new Date() });
+    interview.flagCount = (interview.flagCount || 0) + 1;
+    await interview.save();
+
+    res.json({
+      flagCount: interview.flagCount,
+      voided: interview.voided,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+const voidInterview = async (req, res) => {
+  try {
+    const { candidateId, reason } = req.body;
+
+    let interview = await Interview.findOne({ candidate: candidateId });
+    if (!interview) {
+      interview = new Interview({
+        candidate: candidateId,
+        answers: [],
+        status: 'voided',
+      });
+    }
+
+    interview.voided = true;
+    interview.status = 'voided';
+    interview.voidReason = reason;
+    await interview.save();
+
+    res.json({ success: true, reason });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+module.exports = { submitAnswer, getInterview, flagInterview, voidInterview };
