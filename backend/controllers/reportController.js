@@ -1,21 +1,18 @@
-// backend/controllers/reportController.js
 const Interview = require('../models/Interview.js');
 const Candidate = require('../models/Candidate.js');
 
 const getReport = async (req, res) => {
   try {
-    const { candidateId } = req.params;
+    const { interviewId } = req.params;
 
-    const [candidate, interview] = await Promise.all([
-      Candidate.findById(candidateId),
-      Interview.findOne({ candidate: candidateId }),
-    ]);
-
-    if (!candidate) return res.status(404).json({ error: 'Candidate not found' });
+    const interview = await Interview.findById(interviewId);
     if (!interview) return res.status(404).json({ error: 'Interview not found' });
 
+    const candidate = await Candidate.findById(interview.candidate);
+    if (!candidate) return res.status(404).json({ error: 'Candidate not found' });
+
     const answersWithQuestions = interview.answers.map((answer) => {
-      const question = candidate.questions[answer.questionIndex] || {};
+      const question = interview.questions[answer.questionIndex] || {};
       return {
         questionIndex: answer.questionIndex,
         questionText: answer.questionText,
@@ -25,11 +22,15 @@ const getReport = async (req, res) => {
         score: answer.score,
         verdict: answer.verdict,
         tip: answer.tip,
+        skipped: answer.skipped,
       };
     });
 
     const verdictCounts = answersWithQuestions.reduce(
-      (acc, a) => { acc[a.verdict] = (acc[a.verdict] || 0) + 1; return acc; },
+      (acc, a) => {
+        if (!a.skipped) acc[a.verdict] = (acc[a.verdict] || 0) + 1;
+        return acc;
+      },
       { good: 0, average: 0, weak: 0 }
     );
 
@@ -37,14 +38,15 @@ const getReport = async (req, res) => {
       candidate: {
         name: candidate.name,
         email: candidate.email,
-        jobRole: candidate.jobRole,
+        jobRole: interview.jobRole,
       },
       resumeAnalysis: candidate.resumeAnalysis,
       interview: {
         status: interview.status,
         overallInterviewScore: interview.overallScore,
-        totalQuestions: candidate.questions.length,
-        answeredQuestions: interview.answers.length,
+        totalQuestions: interview.questions.length,
+        answeredQuestions: interview.answers.filter(a => !a.skipped).length,
+        skippedQuestions: interview.answers.filter(a => a.skipped).length,
         verdictBreakdown: verdictCounts,
         answers: answersWithQuestions,
       },

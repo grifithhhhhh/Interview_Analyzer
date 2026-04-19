@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import API from '../api/axios';
-import { useAuth } from '../context/AuthContext';
 
 const STATUS_STYLES = {
   completed:   'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
@@ -23,48 +22,17 @@ function StatCard({ label, value, icon, accent }) {
   );
 }
 
-export default function Dashboard() {
-  const { user } = useAuth();
+export default function InterviewerDashboard() {
   const [candidates, setCandidates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    if (user?.role === 'interviewer') {
-      API.get('/candidates/all')
-        .then(({ data }) => setCandidates(data))
-        .catch((err) => console.error(err))
-        .finally(() => setLoading(false));
-    }
-  }, [user]);
-
-  // Candidate view
-  if (user?.role === 'candidate') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex flex-col items-center justify-center px-4">
-        <div className="text-center max-w-xl">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-indigo-600 mb-6">
-            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
-            </svg>
-          </div>
-          <h2 className="text-4xl font-bold text-gray-800 mb-3 tracking-tight">Ready to practice?</h2>
-          <p className="text-gray-400 text-lg mb-10 leading-relaxed">
-            Upload your resume and get AI-powered interview questions tailored to your profile.
-          </p>
-          <Link
-            to="/upload"
-            className="inline-flex items-center gap-2 bg-indigo-600 text-white px-8 py-3.5 rounded-2xl text-base font-semibold hover:bg-indigo-700 active:scale-[0.98] transition-all"
-          >
-            Start Interview
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-            </svg>
-          </Link>
-        </div>
-      </div>
-    );
-  }
+    API.get('/candidates/all')
+      .then(({ data }) => setCandidates(data))
+      .catch((err) => console.error(err))
+      .finally(() => setLoading(false));
+  }, []);
 
   const filtered = candidates.filter(
     (c) =>
@@ -73,7 +41,6 @@ export default function Dashboard() {
       c.jobRole?.toLowerCase().includes(search.toLowerCase())
   );
 
-  // Interviewer view
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white px-6 py-10">
       <div className="max-w-5xl mx-auto">
@@ -199,7 +166,7 @@ export default function Dashboard() {
                     <td className="px-6 py-4 text-right">
                       {c.interviewStatus === 'completed' && (
                         <Link
-                          to={`/report/${c._id}`}
+                          to={`/interviewer/report/${c._id}`}
                           className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition opacity-0 group-hover:opacity-100"
                         >
                           View Report

@@ -19,7 +19,7 @@ export default function SelectRole() {
 
     try {
       await API.post('/questions/generate', { candidateId, jobRole: role });
-      navigate(`/interview/${candidateId}`);
+      navigate(`/candidate/interview/${candidateId}`);  // fixed
     } catch (err) {
       alert('Failed to generate questions: ' + err.message);
     } finally {
@@ -35,7 +35,6 @@ export default function SelectRole() {
           Based on your resume, we recommend these roles. Pick one or enter your own.
         </p>
 
-        {/* Recommended roles */}
         <div className="flex flex-col gap-3 mb-6">
           {roles.map((role) => (
             <button
@@ -51,7 +50,6 @@ export default function SelectRole() {
             </button>
           ))}
 
-          {/* Custom role option */}
           <button
             onClick={() => setSelectedRole('custom')}
             className={`w-full text-left px-5 py-4 rounded-xl border-2 transition font-medium ${
@@ -64,7 +62,6 @@ export default function SelectRole() {
           </button>
         </div>
 
-        {/* Custom role input */}
         {selectedRole === 'custom' && (
           <input
             type="text"

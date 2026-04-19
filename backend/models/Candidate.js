@@ -1,9 +1,14 @@
-const mongoose = require('mongoose')
+const mongoose = require('mongoose');
 
 const candidateSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    unique: true  // one candidate profile per user
+  },
   name: { type: String, required: true },
   email: { type: String },
-  jobRole: { type: String, required: true },
   resumeText: { type: String },
   resumeAnalysis: {
     overall_score: Number,
@@ -15,13 +20,6 @@ const candidateSchema = new mongoose.Schema({
     summary: String,
     recommended_roles: [String]
   },
-  questions: [
-    {
-      text: { type: String },
-      type: { type: String },       // 'technical', 'behavioral', 'situational'
-      difficulty: { type: String }  // 'easy', 'medium', 'hard'
-    }
-  ]
-}, { timestamps: true })
+}, { timestamps: true });
 
-module.exports = mongoose.model('Candidate', candidateSchema)
+module.exports = mongoose.model('Candidate', candidateSchema);

@@ -1,25 +1,23 @@
 const fs = require('fs');
-const path = require('path');
 const Groq = require('groq-sdk');
 const Interview = require('../models/Interview.js');
 const Candidate = require('../models/Candidate.js');
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// POST /api/interview/answer
 const submitAnswer = async (req, res) => {
   try {
-    const { candidateId, questionIndex } = req.body;
+    const { interviewId, questionIndex } = req.body;
     const audioFile = req.file;
 
-    if (!audioFile || !candidateId || questionIndex === undefined) {
+    if (!audioFile || !interviewId || questionIndex === undefined) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const candidate = await Candidate.findById(candidateId);
-    if (!candidate) return res.status(404).json({ error: 'Candidate not found' });
+    const interview = await Interview.findById(interviewId);
+    if (!interview) return res.status(404).json({ error: 'Interview not found' });
 
-    const question = candidate.questions[questionIndex];
+    const question = interview.questions[questionIndex];
     if (!question) return res.status(404).json({ error: 'Question not found' });
 
     const transcription = await groq.audio.transcriptions.create({
@@ -59,15 +57,6 @@ Respond ONLY with a valid JSON object, no markdown, no explanation:
       feedback = { score: 5, verdict: 'average', tip: 'Could not parse AI feedback.' };
     }
 
-    let interview = await Interview.findOne({ candidate: candidateId });
-    if (!interview) {
-      interview = new Interview({
-        candidate: candidateId,
-        answers: [],
-        status: 'in-progress',
-      });
-    }
-
     const existingIndex = interview.answers.findIndex(
       (a) => a.questionIndex === parseInt(questionIndex)
     );
@@ -78,6 +67,7 @@ Respond ONLY with a valid JSON object, no markdown, no explanation:
       score: feedback.score,
       verdict: feedback.verdict,
       tip: feedback.tip,
+      skipped: false,
     };
 
     if (existingIndex > -1) {
@@ -86,10 +76,14 @@ Respond ONLY with a valid JSON object, no markdown, no explanation:
       interview.answers.push(answerData);
     }
 
-    const totalQuestions = candidate.questions.length;
+    interview.status = 'in-progress';
+
+    const totalQuestions = interview.questions.length;
     if (interview.answers.length >= totalQuestions) {
-      const avg =
-        interview.answers.reduce((sum, a) => sum + a.score, 0) / interview.answers.length;
+      const answered = interview.answers.filter(a => !a.skipped);
+      const avg = answered.length > 0
+        ? answered.reduce((sum, a) => sum + a.score, 0) / answered.length
+        : 0;
       interview.overallScore = Math.round(avg * 10) / 10;
       interview.status = 'completed';
     }
@@ -111,10 +105,55 @@ Respond ONLY with a valid JSON object, no markdown, no explanation:
   }
 };
 
-// GET /api/interview/:candidateId
+const skipQuestion = async (req, res) => {
+  try {
+    const { interviewId, questionIndex, questionText } = req.body;
+
+    const interview = await Interview.findById(interviewId);
+    if (!interview) return res.status(404).json({ error: 'Interview not found' });
+
+    const existingIndex = interview.answers.findIndex(
+      (a) => a.questionIndex === parseInt(questionIndex)
+    );
+
+    const skipData = {
+      questionIndex: parseInt(questionIndex),
+      questionText,
+      skipped: true,
+      transcript: '',
+      score: 0,
+      verdict: 'weak',
+      tip: 'Question was skipped.',
+    };
+
+    if (existingIndex > -1) {
+      interview.answers[existingIndex] = skipData;
+    } else {
+      interview.answers.push(skipData);
+    }
+
+    interview.status = 'in-progress';
+
+    const totalQuestions = interview.questions.length;
+    if (interview.answers.length >= totalQuestions) {
+      const answered = interview.answers.filter(a => !a.skipped);
+      const avg = answered.length > 0
+        ? answered.reduce((sum, a) => sum + a.score, 0) / answered.length
+        : 0;
+      interview.overallScore = Math.round(avg * 10) / 10;
+      interview.status = 'completed';
+    }
+
+    await interview.save();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 const getInterview = async (req, res) => {
   try {
-    const interview = await Interview.findOne({ candidate: req.params.candidateId });
+    const interview = await Interview.findById(req.params.interviewId);
     if (!interview) return res.status(404).json({ error: 'No interview found' });
     res.json(interview);
   } catch (err) {
@@ -124,27 +163,16 @@ const getInterview = async (req, res) => {
 
 const flagInterview = async (req, res) => {
   try {
-    const { candidateId, type } = req.body;
+    const { interviewId, type } = req.body;
 
-    let interview = await Interview.findOne({ candidate: candidateId });
-    if (!interview) {
-      interview = new Interview({
-        candidate: candidateId,
-        answers: [],
-        status: 'in-progress',
-        flagCount: 0,
-        flags: [],
-      });
-    }
+    const interview = await Interview.findById(interviewId);
+    if (!interview) return res.status(404).json({ error: 'Interview not found' });
 
     interview.flags.push({ type, timestamp: new Date() });
     interview.flagCount = (interview.flagCount || 0) + 1;
     await interview.save();
 
-    res.json({
-      flagCount: interview.flagCount,
-      voided: interview.voided,
-    });
+    res.json({ flagCount: interview.flagCount, voided: interview.voided });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -152,16 +180,10 @@ const flagInterview = async (req, res) => {
 
 const voidInterview = async (req, res) => {
   try {
-    const { candidateId, reason } = req.body;
+    const { interviewId, reason } = req.body;
 
-    let interview = await Interview.findOne({ candidate: candidateId });
-    if (!interview) {
-      interview = new Interview({
-        candidate: candidateId,
-        answers: [],
-        status: 'voided',
-      });
-    }
+    const interview = await Interview.findById(interviewId);
+    if (!interview) return res.status(404).json({ error: 'Interview not found' });
 
     interview.voided = true;
     interview.status = 'voided';
@@ -174,4 +196,4 @@ const voidInterview = async (req, res) => {
   }
 };
 
-module.exports = { submitAnswer, getInterview, flagInterview, voidInterview };
+module.exports = { submitAnswer, getInterview, flagInterview, voidInterview, skipQuestion };

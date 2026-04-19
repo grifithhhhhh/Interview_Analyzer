@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import API from '../api/axios';
 
-export default function useAntiCheat({ candidateId, onWarning, onVoid }) {
+export default function useAntiCheat({ interviewId, onWarning, onVoid }) {
   const flagCount = useRef(0);
   const voided = useRef(false);
 
@@ -9,13 +9,13 @@ export default function useAntiCheat({ candidateId, onWarning, onVoid }) {
     if (voided.current) return;
 
     try {
-      const { data } = await API.post('/interview/flag', { candidateId, type });
+      const { data } = await API.post('/interview/flag', { interviewId, type });
       flagCount.current = data.flagCount;
 
       if (data.flagCount >= 3) {
         voided.current = true;
         await API.post('/interview/void', {
-          candidateId,
+          interviewId,
           reason: `Terminated due to repeated violations: ${type}`,
         });
         onVoid(`Terminated due to repeated violations. Last violation: ${formatType(type)}`);
@@ -25,7 +25,7 @@ export default function useAntiCheat({ candidateId, onWarning, onVoid }) {
     } catch (err) {
       console.error('Flag error:', err);
     }
-  }, [candidateId, onWarning, onVoid]);
+  }, [interviewId, onWarning, onVoid]);
 
   const formatType = (type) => {
     const map = {
@@ -36,7 +36,6 @@ export default function useAntiCheat({ candidateId, onWarning, onVoid }) {
     return map[type] || type;
   };
 
-  // Tab switch detection
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden && !voided.current) {
@@ -47,7 +46,6 @@ export default function useAntiCheat({ candidateId, onWarning, onVoid }) {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [sendFlag]);
 
-  // Window blur detection
   useEffect(() => {
     const handleBlur = () => {
       if (!voided.current) sendFlag('window_blur');
@@ -56,7 +54,6 @@ export default function useAntiCheat({ candidateId, onWarning, onVoid }) {
     return () => window.removeEventListener('blur', handleBlur);
   }, [sendFlag]);
 
-  // Fullscreen exit detection
   useEffect(() => {
     const handleFullscreenChange = () => {
       if (!document.fullscreenElement && !voided.current) {
